@@ -1,0 +1,112 @@
+<head>
+    <style> body { margin: 0; } 
+    
+    
+    #graph {
+      background-color: #101920;
+    }
+    </style>
+  
+    <script src="//unpkg.com/force-graph"></script>
+    <!--<script src="../../dist/force-graph.js"></script>-->
+  </head>
+  
+  <body>
+    <input type="text" id="search"/><button onclick="search()">SEARCH</button>
+    <div id="graph"></div>
+
+    <script>
+      function linkWidth(link) {
+        return (link.source.key === hover || link.target.key === hover) ? 2 : 1;
+      }
+
+      function linkColor(link, ctx, globalScale) {
+        let h = (link.source.key === hover || link.target.key === hover)
+        return 'rgba(255,' + (h ? '100' : '255') + ',' + (h ? '0' : '255') + ',' + (Math.pow(Math.exp(-2 * ((h ? 0.5 : 0) + (link.s - 0.02))) - 1, 2) * 1.2) + ')'
+      }
+
+      function node(node, ctx, globalScale) {
+        gs = globalScale;
+        let t = node.key === hover ? 1 : Math.min(Math.max(globalScale * 1.5 - 1, 0), 1);
+        if (t <= 0)
+          return;
+
+        const label = "r/" + node.n;
+        const fontSize = 24/globalScale;
+        ctx.font = `${fontSize}px Sans-Serif`;
+        const textWidth = ctx.measureText(label).width;
+        const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2); // some padding
+
+        ctx.fillStyle = 'rgba(0,0,0, ' + (0.4 * t) + ')';
+        ctx.fillRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2, ...bckgDimensions);
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = node.xxx ? 'rgba(255, 150, 150, ' + t + ')' : 'rgba(255, 255, 255, ' + t + ')';
+        ctx.fillText(label, node.x, node.y);
+      }
+
+      function nodeHover(node) { 
+        if (locked)
+          return;
+
+        hover = null;
+        if (node) {
+          hover = node.key;
+        }
+      }
+
+      window.devicePixelRatio = 1; // use standard resolution in retina displays
+
+      var hover = null;
+      var locked = false;
+      let gs = 1;
+      var Graph;
+
+      fetch('../datac.json').then(res => res.json()).then(data => {
+        Graph = ForceGraph()
+          (document.getElementById('graph'))
+          .graphData(data)
+          .nodeId('key')
+          .nodeRelSize(10)
+          .nodeVal(1)
+          .linkCurvature(0.2)
+          .linkWidth(linkWidth)
+          .linkColor(linkColor)
+          .nodeCanvasObject(node)
+          .d3VelocityDecay(0.2)
+          .d3AlphaDecay(0.01)
+          .cooldownTime(20000)
+          .onNodeHover(nodeHover)
+          .onNodeClick(node => {
+            locked = true;
+            hover = node.key;
+          })
+          .onBackgroundClick(() => {
+            locked = false;
+          })
+          .enableNodeDrag(false)
+          //.enablePointerInteraction(false);
+          
+        Graph.d3Force('link').distance(link => Math.max(5, 10 / Math.pow(5, link.s)));
+        Graph.d3Force('link').strength(link => 1.5 / (1 + Math.exp(-5 * (link.s - 1))));
+        let c = Graph.d3Force('charge');
+        c.strength(-100);
+        c.theta(0.9);
+
+      });
+
+      function search() {
+        let q = document.getElementById("search").value;
+        let box = Graph.getGraphBbox(node => node.n.toLowerCase() === q.toLowerCase());
+        if (!box)
+          box = Graph.getGraphBbox(node => node.n.startsWith(q.toLowerCase()));
+
+        if (!box)
+          alert("Could not find the subreddit '" + q + "'");
+
+        Graph.centerAt((box.x[0] + box.x[1]) / 2, (box.y[0] + box.y[0]) / 2, 1000);
+        Graph.zoom(2, 1000);
+      }
+    </script>
+  </body>
