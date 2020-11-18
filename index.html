@@ -1,6 +1,30 @@
 <head>
     <style> body { margin: 0; } 
     
+    .searchbox {
+      position: absolute;
+      z-index: 10000;
+    }
+
+    #search {
+      border-radius: 0;
+      border: none;
+      height: 20px;
+    }
+
+    button {
+      border-bottom-left-radius: 0;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 5px;
+      border: none;
+      height: 20px;
+      background-color: #ddd;
+    }
+
+    :focus {
+      outline: none !important;
+    }
     
     #graph {
       background-color: #101920;
@@ -12,7 +36,9 @@
   </head>
   
   <body>
-    <input type="text" id="search"/><button onclick="search()">SEARCH</button>
+    <form class="searchbox" id="form">
+      <input type="text" id="search"/><button type="submit">SEARCH</button>
+    </form>
     <div id="graph"></div>
 
     <script>
@@ -128,8 +154,8 @@
         .linkColor(linkColor)
         .nodeCanvasObject(node)
         .d3VelocityDecay(0.2)
-        .d3AlphaDecay(0.01)
-        .cooldownTime(20000)
+        .d3AlphaDecay(0.015)
+        .cooldownTime(15000)
         .onNodeHover(nodeHover)
         .onNodeClick(node => {
         locked = true;
@@ -148,17 +174,22 @@
     c.theta(0.9);
 
 
-      function search() {
+      function search(e) {
+        e.preventDefault();
         let q = document.getElementById("search").value;
         let box = Graph.getGraphBbox(node => node.n.toLowerCase() === q.toLowerCase());
         if (!box)
-          box = Graph.getGraphBbox(node => node.n.startsWith(q.toLowerCase()));
+          box = Graph.getGraphBbox(node => node.n.toLowerCase().startsWith(q.toLowerCase()));
 
         if (!box)
           alert("Could not find the subreddit '" + q + "'");
 
         Graph.centerAt((box.x[0] + box.x[1]) / 2, (box.y[0] + box.y[0]) / 2, 1000);
         Graph.zoom(2, 1000);
+
+        return false;
       }
+
+      document.getElementById("form").addEventListener("submit", search);
     </script>
   </body>
