@@ -32,8 +32,8 @@ with open('lookup.txt') as f:
 reddit = praw.Reddit(
     client_id="MPLgiAm9vLBTYA",
     client_secret="vcCg0YryVXht5B3CaqGs1tZkDOKGHQ",
-    password="Z1gp.hzjilk16b1k",
-    username="Dysprosia1",
+    password="xxx",
+    username="xxx",
     user_agent="python:sentiment:v1 (by u/dysprosia1)"
 )
 
