@@ -6,8 +6,10 @@ const port = 3000
 app.use(express.static('public'));
 app.use(express.json());
 
-// const db = new sequelize.Sequelize('sqlite:links_100000x2.db')
-const db = new sequelize.Sequelize('sqlite:links_22500x4.db')
+
+// Setup for SQLite
+const db = new sequelize.Sequelize('sqlite:links_22500x4.db');
+
 const users = db.define("user", {
     name: {
         type: sequelize.DataTypes.STRING,
@@ -52,6 +54,7 @@ const links = db.define("link", {
 }, { tableName: "link", timestamps: false });
 
 
+// Endpoint that compiles data from SQLite
 app.get('/data', async (req, res) => {
     let allUsers = await users.findAll();
     let allSubs = await subs.findAll();
