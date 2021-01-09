@@ -49,7 +49,7 @@ Afterwards, all edges with a strength less than 0.1 are discarded, otherwise the
 
 ## Data Visualization
 
-The UI is a force directed graph. There are a number of forces applied to each node. A spring force is applied along the edges, strong edges pull tigher than weak one. There is also strong repulsive force between all vertices, together these forces make clusters more distinct. 
+The UI is a force directed graph rendered using an html canvas. There are a number of forces applied to each node. A spring force is applied along the edges, strong edges pull tigher than the weaker ones. There are also strong repulsive force between all vertices, together these forces make clusters more distinct. 
 
 
 ## Conclusion
