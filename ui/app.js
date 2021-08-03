@@ -8,7 +8,7 @@ app.use(express.json());
 
 
 // Setup for SQLite
-const db = new sequelize.Sequelize('sqlite:links_22500x4.db');
+const db = new sequelize.Sequelize('sqlite:TEST.db');
 
 const users = db.define("user", {
     name: {
@@ -131,7 +131,7 @@ app.get('/data', async (req, res) => {
             return;
 
         let v = vs.reduce((a, b) => a + b, 0) / (subPower.get(s1) + subPower.get(s2)) * 100
-        if (v < 0.1)
+        if (v < 0.15)
             return;
 
         let s1id = idMap.get(s1);

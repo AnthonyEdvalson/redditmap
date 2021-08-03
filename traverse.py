@@ -6,10 +6,12 @@ import sqlite3
 import time
 
 # Minimum number of subscribers per subreddit
-MIN_PER_SUB = 4
+COUNT_PER_SUB = 25
+MIN_SIZE = 60000
+CURIOSITY = 0.4
 
 # Percent of reddit to obtain
-target_saturation = (1 / 90000) * MIN_PER_SUB
+#target_saturation = (1 / 90000) * MIN_PER_SUB
 
 
 # Load the lookup table for subscriber counts
@@ -22,14 +24,21 @@ with open('lookup.txt') as f:
         name, count = line.split("\t")
         sub_lookup[name] = int(count.replace(",", ""))
 
+with open("api.keys") as f:
+    client_id = f.readline()[:-1]
+    client_secret = f.readline()[:-1]
+    username = f.readline()[:-1]
+    password = f.readline()[:-1]
+    user_agent = f.readline()[:-1]
 
+print(client_id)
 # Connect to Reddit with PRAW
 reddit = praw.Reddit(
-    client_id="MPLgiAm9vLBTYA",
-    client_secret="vcCg0YryVXht5B3CaqGs1tZkDOKGHQ",
-    password="xxx",
-    username="xxx",
-    user_agent="python:sentiment:v1 (by u/dysprosia1)"
+    client_id=client_id,
+    client_secret=client_secret,
+    password=password,
+    username=username,
+    user_agent=user_agent
 )
 
 # Sets for filtering out searched and bad subreddits and users
@@ -41,15 +50,16 @@ searched_users = set()
 sub_sightings = {'funny': 5}
 
 # Connect to the database, below are the list of commands used for each table
-db = sqlite3.connect('links.db')
+db = sqlite3.connect('TEST.db')
 # create table user (name varchar(25) primary key, mod integer, gold integer, karma integer);
 # create table sub (name varchar(25) primary key, nsfw integer, subscribers Integer);
-# create table link (user_name varchar(25), sub_name varcher(25), power integer, PRIMARY KEY (user_name, sub_name));
+# create table link (user_name varchar(25), sub_name varchar(25), power integer, PRIMARY KEY (user_name, sub_name));
 # create table lead (type integer, name varchar(25), PRIMARY KEY (type, name));
 
 # Used to show progress
 completed_work = 1
 total_work = 1
+
 
 # Utility for interacting with the database
 class Transact:
@@ -130,16 +140,18 @@ def explore_redditor(name):
 
 
 # Get data on a particular subreddit
-def explore_sub(name, target_sat):
+def explore_sub(name):
     global total_work, completed_work
+    print("r/{: <25}".format(name), end="")
 
     # Ignore if already searched
     if name in searched_subs:
+        print(" has already been searched")
         return set()
 
     # Ignore if stats are bad
     # thresh is number of users needed for this sub to have associated users
-    thresh = MIN_PER_SUB / target_sat
+    thresh = MIN_SIZE
     if name in sub_lookup:
         valid_chance = 1 if sub_lookup[name] > thresh else 0
     else:
@@ -148,32 +160,37 @@ def explore_sub(name, target_sat):
         # Find the chance that this sub has enough people
         valid_chance = 1 - beta.cdf(min_p, 1 + sightings, 1 + max(0, len(searched_users) - sightings))
 
-    # Need to be 90% sure
-    if valid_chance < 0.9:
+    print(" p={: >3}%".format(str(int(valid_chance * 100))), end="")
+
+    if valid_chance < (1 - CURIOSITY):
+        print(", skipping")
         return set()
 
-    print("Exploring ({:.2f}) r/{}".format(valid_chance, name), end="")
+    print(", exploring", end="")
 
     try:
         sub = reddit.subreddit(name)
         subscribers = sub.subscribers
-        portion = math.floor(subscribers * target_sat)
-    except:
+        portion = COUNT_PER_SUB
+    except Exception as e:
         print("\nFailed to load r/" + name)
+        print(e)
         return set()
-
-    print(" and " + str(portion) + " users")
 
     if portion > 1024:
         print("CUTOFF")
 
     users = set()
-    if portion > MIN_PER_SUB:
+    if subscribers > MIN_SIZE:
+        print(" " + str(portion) + " users")
+
         for post in sub.new(limit=portion):
             users.add(str(post.author))
 
         with Transact(db) as c:
             c.execute("INSERT OR REPLACE INTO sub VALUES (?,?,?)", (sub.display_name, sub.over18, subscribers))
+    else:
+        print(" but too small")
 
     searched_subs.add(name)
 
@@ -201,7 +218,7 @@ def main_loop():
     while len(subs) > 0:
         total_work += len(subs)
         for sub in subs:
-            users = set.union(users, explore_sub(sub, target_saturation))
+            users = set.union(users, explore_sub(sub))
             completed_work += 1
             new_total = total_work + len(users)
             log(completed_work, new_total, start)
@@ -216,7 +233,7 @@ def main_loop():
         users = set()
 
 
-print("Min sub size: " + str(int(round(MIN_PER_SUB / target_saturation))))
+print("Min sub size: " + str(MIN_SIZE))
 start = time.time()
 main_loop()
 end = time.time()
